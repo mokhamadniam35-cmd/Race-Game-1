@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Balap Kuis Cerdas – Versi Final</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#e6f7ff;
+  text-align:center;
+  touch-action:manipulation;
+  user-select:none;
+}
+
+/* ===== TIMER ===== */
+#raceTimer{
+  position:fixed;
+  top:10px;
+  right:20px;
+  background:black;
+  color:#0f0;
+  padding:6px 12px;
+  border-radius:8px;
+  font-weight:bold;
+  z-index:9999;
+}
+
+/* ===== LOBBY ===== */
+#lobby{
+  padding:30px;
+}
+#startBtn{
+  padding:15px 30px;
+  font-size:20px;
+  cursor:pointer;
+}
+
+/* ===== ARENA ===== */
+#arena{
+  width:95%;
+  margin:auto;
+  background:#a0d8ff;
+  border-radius:10px;
+  padding:20px;
+  position:relative;
+}
+
+.track{
+  height:60px;
+  margin:10px 0;
+  position:relative;
+  background:rgba(255,255,255,0.4);
+  border-radius:6px;
+}
+
+/* ===== START & FINISH ===== */
+.start-line,.finish-line{
+  position:absolute;
+  top:0;
+  bottom:0;
+  width:10px;
+}
+.start-line{
+  left:0;
+  background:repeating-linear-gradient(
+    45deg,#000,#000 5px,#fff 5px,#fff 10px);
+}
+.finish-line{
+  right:0;
+  background:repeating-linear-gradient(
+    -45deg,#000,#000 5px,#fff 5px,#fff 10px);
+}
+
+/* ===== ROBOT ===== */
+.robot{
+  width:40px;
+  height:40px;
+  position:absolute;
+  left:0;
+  top:10px;
+  transition:left .4s;
+  border-radius:6px;
+  color:white;
+  font-weight:bold;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* ===== PANEL ===== */
+.panels{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+  margin-top:20px;
+}
+.panel{
+  background:white;
+  padding:10px;
+  border-radius:6px;
+  width:200px;
+}
+.panel button{
+  width:100%;
+  margin:4px 0;
+  padding:8px;
+  font-size:14px;
+}
+
+/* ===== RANKING ===== */
+#rankingOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.85);
+  color:white;
+  display:none;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  z-index:99999;
+}
+</style>
+</head>
+
+<body onload="loadQuestions()">
+
+<div id="raceTimer">⏱️ 0.0 s</div>
+
+<div id="lobby">
+  <h1>Balap Kuis Cerdas</h1>
+  <button id="startBtn" onclick="startGame()">Mulai Balapan</button>
+  <p id="status"></p>
+</div>
+
+<div id="game" style="display:none">
+  <div id="arena">
+    <div class="track">
+      <div class="start-line"></div>
+      <div class="finish-line"></div>
+      <div class="robot" id="r1" style="background:#007bff">1</div>
+    </div>
+    <div class="track">
+      <div class="start-line"></div>
+      <div class="finish-line"></div>
+      <div class="robot" id="r2" style="background:#dc3545">2</div>
+    </div>
+    <div class="track">
+      <div class="start-line"></div>
+      <div class="finish-line"></div>
+      <div class="robot" id="r3" style="background:#ffc107;color:black">3</div>
+    </div>
+    <div class="track">
+      <div class="start-line"></div>
+      <div class="finish-line"></div>
+      <div class="robot" id="r4" style="background:#28a745">4</div>
+    </div>
+  </div>
+
+  <div class="panels">
+    <div class="panel" id="p1"></div>
+    <div class="panel" id="p2"></div>
+    <div class="panel" id="p3"></div>
+    <div class="panel" id="p4"></div>
+  </div>
+</div>
+
+<div id="rankingOverlay"></div>
+
+<script>
+const DEFAULT_SHEET_ID='1oHa5gGKi-rqnPcjt9p-Iz2iDjTc3GEciKfgHFYuepYk';
+
+let questions=[];
+let timer,startTime;
+const finishSteps=10;
+
+const players=[1,2,3,4].map(i=>({
+ id:i,
+ pos:0,
+ score:0,
+ start:0,
+ finish:0,
+ robot:document.getElementById('r'+i),
+ panel:document.getElementById('p'+i)
+}));
+
+function getSheetID(){
+ const p=new URLSearchParams(location.search);
+ return p.get('id')||DEFAULT_SHEET_ID;
+}
+
+async function loadQuestions(){
+ try{
+  const url=`https://docs.google.com/spreadsheets/d/${getSheetID()}/gviz/tq?tqx=out:csv`;
+  const t=await (await fetch(url)).text();
+  questions=t.trim().split('\n').map(r=>{
+    const c=r.match(/(".*?"|[^,]+)/g).map(x=>x.replace(/"/g,''));
+    return c.length>=4?c:null;
+  }).filter(Boolean);
+  document.getElementById('status').innerText='Soal siap!';
+ }catch{
+  questions=[
+   ["2+2=?","4","3","5"],
+   ["Ibu kota RI","Jakarta","Bandung","Surabaya"]
+  ];
+ }
+}
+
+function startGame(){
+ document.getElementById('lobby').style.display='none';
+ document.getElementById('game').style.display='block';
+
+ startTime=Date.now();
+ timer=setInterval(()=>{
+  document.getElementById('raceTimer').innerText=
+   '⏱️ '+((Date.now()-startTime)/1000).toFixed(1)+' s';
+ },100);
+
+ players.forEach(p=>{
+  p.start=startTime;
+  nextQuestion(p);
+ });
+}
+
+function nextQuestion(p){
+ const q=questions[Math.floor(Math.random()*questions.length)];
+ const opts=[q[1],q[2],q[3]].sort(()=>Math.random()-0.5);
+
+ p.panel.innerHTML=`<b>Pemain ${p.id}</b><br>${q[0]}<br>`;
+ opts.forEach(o=>{
+  const b=document.createElement('button');
+  b.innerText=o;
+  b.onclick=()=>answer(p,o,q[1]);
+  p.panel.appendChild(b);
+ });
+}
+
+function answer(p,val,correct){
+ if(val===correct){
+  p.pos++; p.score+=10;
+  const max=p.robot.parentElement.offsetWidth-50;
+  p.robot.style.left=(p.pos/finishSteps)*max+'px';
+
+  if(p.pos>=finishSteps){
+   finish(p); return;
+  }
+ }
+ nextQuestion(p);
+}
+
+function finish(winner){
+ clearInterval(timer);
+ winner.finish=Date.now();
+
+ const time=(winner.finish-winner.start)/1000;
+ let bonus= time<=30?50: time<=45?30:10;
+ winner.score+=bonus;
+
+ confetti();
+ showRanking();
+}
+
+function showRanking(){
+ const sorted=[...players].sort((a,b)=>{
+  if(b.score!==a.score) return b.score-a.score;
+  return (a.finish-a.start)-(b.finish-b.start);
+ });
+
+ const box=document.getElementById('rankingOverlay');
+ box.innerHTML='<h2>🏆 HASIL AKHIR</h2><ol>'+
+  sorted.map(p=>`<li>P${p.id} — ${p.score} poin</li>`).join('')+
+  '</ol>';
+ box.style.display='flex';
+}
+</script>
+
+</body>
+</html>
