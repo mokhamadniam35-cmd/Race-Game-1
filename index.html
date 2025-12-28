@@ -13,6 +13,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
     <style>
+/* === TAMBAHAN INPUT NAMA PEMAIN === */
+#player-name-inputs input {
+  padding: 8px;
+  margin: 5px;
+  width: 220px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 1em;
+}
+        
         /* --- CSS (Styling) --- */
         /* --- PENYESUAIAN KHUSUS UNTUK LAYAR SENTUH (Anti-Geser/Zoom) --- */
         body {
@@ -297,9 +307,9 @@
 
         #finish-line, #start-line { position: absolute; width: 100%; height: 20px; line-height: 20px; font-weight: bold; color: white; z-index: 10; text-align: center; text-transform: uppercase; font-size: 0.8em; border-radius: 5px; }
 
-        #finish-line { top: 0; background: var(--win-line-color); border-top-left-radius: 8px; border-top-right-radius: 8px; }
+        #finish-line { right: 0; background: var(--win-line-color); border-top-left-radius: 8px; border-top-right-radius: 8px; }
 
-        #start-line { bottom: 0; background: var(--start-line-color); border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+        #start-line { left: 0; background: var(--start-line-color); border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
 
 
 
@@ -667,8 +677,15 @@
 
     <div id="lobby-screen">
 
-        <h2>Balap Kuis Pengetahuan</h2>
+        <h2>Balap Robot Cerdas</h2>
 
+<!-- === INPUT NAMA PEMAIN (TAMBAHAN) === -->
+<div id="player-name-inputs" style="margin-bottom:20px;">
+  <input id="name-p1" placeholder="Nama Pemain 1 (Biru)" />
+  <input id="name-p2" placeholder="Nama Pemain 2 (Merah)" />
+  <input id="name-p3" placeholder="Nama Pemain 3 (Kuning)" />
+  <input id="name-p4" placeholder="Nama Pemain 4 (Hijau)" />
+</div>
 
 
         <p id="question-count-display"></p>
@@ -833,7 +850,7 @@
 
             <h2 id="message-display">Siap Balapan!</h2>
 
-            <button id="restart-btn" class="hidden">Kembali ke Lobi</button>
+            <button id="restart-btn" class="hidden">Kembali ke Beranda</button>
 
         </div>
 
@@ -843,15 +860,15 @@
 
     <div id="creator-info-footer">
 
-        <p>Dibuat oleh: Ayu Elma Sari</p>
+        <p>Dibuat oleh: Mokhamad Syukron Ni'am-SMP Negeri 1 Wiradesa</p>
 
         <div class="social-icons">
 
-            <div><i class="fab fa-instagram"></i> aes_435</div>
+            <div><i class="fab fa-instagram"></i> GED</div>
 
-            <div><i class="fab fa-tiktok"></i> aes435_</div>
+            <div><i class="fab fa-tiktok"></i> GED_</div>
 
-            <div><i class="fab fa-facebook"></i> Ayu Elma Sari</div>
+            <div><i class="fab fa-facebook"></i> syukron_niam</div>
 
         </div>
 
@@ -886,6 +903,8 @@ const FALLBACK_QUESTIONS = [
 const playerKeys = [1, 2, 3, 4];
 const players = playerKeys.map(p => ({
     id: p,
+    name: `Pemain ${p}`,
+  score: 0,
     element: document.getElementById(`player-icon-p${p}`),
     position: 0,
     correctAnswer: '', 
@@ -1073,6 +1092,13 @@ function initializeRace() {
     gameActive = false;
 
     players.forEach(p => { 
+        const input = document.getElementById(`name-p${p.id}`);
+  if (input && input.value.trim() !== "") {
+    p.name = input.value.trim();
+  }
+  const label = document.querySelector(`#panel-p${p.id} h3`);
+  if (label) label.textContent = p.name;
+});
         p.position = 0;
         p.element.style.left = '5px'; 
         p.questionDisplay.textContent = 'Siap!';
@@ -1142,6 +1168,7 @@ async function checkAnswer(playerNum, selectedAnswerValue) {
     const isCorrect = selectedAnswerValue === player.correctAnswer;
 
     if (isCorrect) {
+        player.score += 10;
         player.position++;
         updatePlayerIconPosition(player); 
         if (player.position >= finishSteps) return;
@@ -1171,7 +1198,7 @@ async function checkAnswer(playerNum, selectedAnswerValue) {
 
 function endGame(winningPlayerNum, message) {
     gameActive = false;
-    messageDisplay.textContent = message;
+    messageDisplay.textContent = `🏆 ${players.find(p=>p.id===winningPlayerNum).name} MENANG!`;
     restartBtn.classList.remove('hidden');
 
     players.forEach(p => deactivateKeypad(p.keypad));
